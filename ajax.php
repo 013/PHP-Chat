@@ -11,17 +11,12 @@ function NewLines($text) {
 	return preg_match("/(%0A|%0D|\\n+|\\r+)/i", $text) == 1;
 }
 
-function openmess() {
-	$txtfile = file("./messages.txt");
-	
-	foreach ($txtfile as $line_num => $line) {
-			$message = preg_split("/(?<!\\\)\/\//", $line);
-			$msgtime = $message[0];
-			$msgnick = $message[1];
-			print_r($message);
-			print "<br>";
-			//print "Line #<b>{$line_num}</b> : " . htmlspecialchars($line) . "<br>\n";
-	}
+function newMesFile() {
+	$file = fopen("messages.txt", 'w') or die("Message file could not be created, try checking permissions");
+	$firstmessage = time() . "//Server//Empty Chat~\n";
+	$firstmessage .= time() . "//Server//Send a message!\n";
+	fwrite($file, $firstmessage);
+	fclose($file);
 }
 
 function checkban($userip) {
@@ -41,7 +36,7 @@ function savemessage($message) {
 	fclose($fh);
 }
 
-function htmlit($content, $well = 1) {  //This looks done~
+function htmlit($content, $well = 1) {
 	$content = preg_split("/(?<!\\\)\/\//", $content);
 	$time = $content[0]; //Unix timestamp needs to be made readable
 	$time = date("H:i:s" , $time);
@@ -56,28 +51,27 @@ HTML;
 	return $HTML;
 }
 
-function newMsg($newMsg, $nick) { //Done~
+function newMsg($newMsg, $nick) {
+	/* All HTML and '<,>' get removed at the minute */
 	$newMsg = replacehtml($newMsg);
 	$nick	= replacehtml($nick);
-		/*/htmlentities() still allows ''""
-		unless you use it like htmlentities($string, ENT_QUOTES);*/
+	
 	$message = strval(time()) . '//' . $nick . '//' . $newMsg;
 	
 	savemessage($message);
 }
 
 function checkMsg($lastMsg, $nick) { 
-	//print $lastMsg;
-
 	if (!NewLines($lastMsg)) {
-		//There is not a new line so one needs to be appended
+		/* There is not a new line so one needs to be appended
+		   Although there is no reason why there shouldn't be a 
+		   new line at the end. */
 		$lastMsg .= "\n";
 	}
 
-	// $nick may not be needed, but just in case
+	// $nick may not be needed, but just futureproof
 	$txtfile = file("./messages.txt");
-	//Any message new than the current $lastMsg need to be sent back
-	// not just one single message (I know what I mean)
+	// Any message newer than the current $lastMsg need to be sent back
 	$mesAm = count($txtfile); 
 	$lstML = 9999; //The line # of the lastMsg
 
@@ -121,6 +115,10 @@ function replacehtml($string) {
 /*----------*/
 #           #
 /*----------*/
+
+if (!file_exists("./messages.txt")) {
+	newMesFile();
+}
 
 if ($_POST && !isset($_POST['htmlit']) && !isset($_POST['getnewest'])) {
 	checkban($_SERVER['REMOTE_ADDR']);
