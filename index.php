@@ -9,8 +9,7 @@
 <body>
 
 <div id="wrapper">
-<div id="lastmsg" style="display: none;"></div>
-<div id="msgnum" style="display: none;">1</div>
+<div id="lastmsg" style="display: none;">0</div>
 <div id="dataDisplay">
 </div>
 <div id="messageinput">

@@ -1,150 +1,137 @@
 <?php
-/* info 
 
-Full message syntax:
-time//nick//message
-1327243567//ryan//hello everyone
+/* ----------------
+   ___  _ _____ 
+  / _ \/ |___ / 
+ | | | | | |_ \ 
+ | |_| | |___) |
+  \___/|_|____/
 
-*/
+---------------- */
 
-function NewLines($text) {
-	return preg_match("/(%0A|%0D|\\n+|\\r+)/i", $text) == 1;
-}
+// Open the database
+check_ban($_SERVER['REMOTE_ADDR']);
+$dbhandle = open_db();
 
-function newMesFile() {
-	$file = fopen("messages.txt", 'w') or die("Message file could not be created, try checking permissions");
-	$firstmessage = time() . "//Server//Empty Chat~\n";
-	$firstmessage .= time() . "//Server//Send a message!\n";
-	fwrite($file, $firstmessage);
-	fclose($file);
-}
-
-function checkban($userip) {
-	if ($userip == 1) {
-		return true;
-	} else {
-		return false;
+if ($_POST) {
+	if (isset($_POST['new_message'])) {
+		insert_data($dbhandle, $_SERVER['REMOTE_ADDR'], $_POST['nick'], $_POST['newmsg']);
+	} elseif (isset($_POST['get_message'])) {
+		print get_data($dbhandle, $_POST['old_message']);
+	
 	}
+} elseif ($_GET) { // Just for testing
+	if (isset($_GET['new_message'])) {
+		insert_data($dbhandle, $_SERVER['REMOTE_ADDR'], $_GET['nick'], $_GET['message']);
+	} elseif (isset($_GET['get_message'])) {
+		get_data($dbhandle, $_GET['old_message']);
+	
+	}
+} else {
+	// Currently for testing
+	//insert_data($dbhandle, $_SERVER['REMOTE_ADDR'], "Ryan", "MY MEssage");
+	$search = array('&', '"', '\'', '<', '>');
+	$replace = array('&amp;', '&quot;', '&#39;', '&lt;', '&gt;');
+	
+	print clean("<b>hi");
+	
+	//echo str_replace($search, $replace, "<hi>");
+	//print get_data($dbhandle);
 }
 
-function savemessage($message) {
-	$txtfile = "./messages.txt";
-	$fh = fopen($txtfile, 'a') or die("Error opening file");
-	fwrite($fh, $message . "\n"); 
-	/*A new line also needs appending, since
-	  one does not prepend it*/
-	fclose($fh);
+function open_db() {
+	(!file_exists('chat.db')) ? $create = True : $create = False;
+	// If the database does not exists, create
+	$dbhandle = sqlite_open('chat.db', 0666, $error);
+	if (!$dbhandle) return $error;
+	
+	$table = "CREATE TABLE messages
+			(
+			 ID integer AUTOINCREMENT,
+			 Time timestamp NOT NULL,
+			 User_IP varchar(15) NOT NULL,
+			 Nick varchar(50) NOT NULL,
+			 Message varchar(300) NOT NULL,
+			 PRIMARY KEY (ID)
+			)";
+	if ($create) $query = sqlite_exec($dbhandle, $table, $error);
+	
+	return $dbhandle;
 }
 
-function htmlit($content, $well = 1) {
-	$content = preg_split("/(?<!\\\)\/\//", $content);
-	$time = $content[0]; //Unix timestamp needs to be made readable
-	$time = date("H:i:s" , $time);
-	$nick = $content[1];
-	$message = $content[2];
-	//
+function get_data($dbhandle, $old_message = 0) {
+	$old_message = (int) $old_message;
+	
+	$HTML = "";
+	
+		$sql = "SELECT COUNT(*) FROM messages;";
+		$result = sqlite_array_query($dbhandle, $sql);
+		$total_messages = $result[0][0];
+		
+		if ($total_messages == $old_message) {
+			return $total_messages;
+		}
+		
+		if ($total_messages >= 5 && $old_message == 0) {
+			$old_message = $total_messages - 5;
+		}
+	//}
+	
+	$old_message = sqlite_escape_string($old_message);
+	$sql = "SELECT * FROM messages WHERE ID > $old_message";
+	
+	$result = sqlite_array_query($dbhandle, $sql);
+	foreach ($result as $entry) {
+		/*if (clean($entry['ID']) > $old_message) {
+			;//Greater == newer;
+		}*/
+		/* print "ID: " . clean($entry['ID']) . 
+			  " Time: " . clean($entry['Time']) . 
+			  " Nick: " . clean($entry['Nick']) . 
+			  " Message: " . clean($entry['Message']) . 
+			  "<br>\n";
+		*/
+		//"ID: " . clean($entry['ID']) . 
+		
+		$HTML .= html(clean($entry['ID']), clean($entry['Time']), clean($entry['Nick']), clean($entry['Message']));
+	}
+	
+	return $total_messages . $HTML;
+}
+
+function insert_data($dbhandle, $user_ip, $nick, $message) {
+	$user_ip = sqlite_escape_string($user_ip);
+	$nick = sqlite_escape_string($nick);
+	$message = sqlite_escape_string($message);
+	$sql = "INSERT INTO messages VALUES (NULL, " . time() . ", '$user_ip', '$nick', '$message')";
+
+	sqlite_query($dbhandle, $sql);
+}
+
+function clean($string) {
+	// Simple replace function to stop any injection
+	$search = array('&', '"', '\'', '<', '>');
+	$replace = array('&amp;', '&quot;', '&#39;', '&lt;', '&gt;');
+
+	$string = str_replace($search, $replace, $string);
+	return $string;
+}
+
+function html($id, $time, $nick, $message) {
+	$time = gmdate("H:i:s", $time); // GMT Time Zone
+	
+	$id = $id % 2;
 	$HTML = <<<HTML
-<div class="msg{$well}">
-	[{$time}] &lt;{$nick}&gt; {$message}</div>
+<div class="msg{$id}"> 
+[{$time}] &lt;{$nick}&gt; {$message}</div>
 HTML;
 	
 	return $HTML;
 }
 
-function newMsg($newMsg, $nick) {
-	/* All HTML and '<,>' get removed at the minute */
-	$newMsg = replacehtml($newMsg);
-	$nick	= replacehtml($nick);
-	
-	$message = strval(time()) . '//' . $nick . '//' . $newMsg;
-	
-	savemessage($message);
-}
-
-function checkMsg($lastMsg, $nick) { 
-	if (!NewLines($lastMsg)) {
-		/* There is not a new line so one needs to be appended
-		   Although there is no reason why there shouldn't be a 
-		   new line at the end. */
-		$lastMsg .= "\n";
-	}
-
-	// $nick may not be needed, but just futureproof
-	$txtfile = file("./messages.txt");
-	// Any message newer than the current $lastMsg need to be sent back
-	$mesAm = count($txtfile); 
-	$lstML = 9999; //The line # of the lastMsg
-
-	/* Message amount will be, the amount of message +1,
-	   since there is a new line at the end */
-	foreach ($txtfile as $line_num => $line) {
-		if ($line == $lastMsg) {
-			$lstML = $line_num;
-			if ($line_num == ($mesAm - 1)) {
-				/* The last message is the last one
-				   that the user received */
-				print "0";
-				die();
-			}
-		} elseif ($line != $lastMsg && $line_num > $lstML) {
-			print $line;
-			die();
-		}
-	}
-}
-
-function amountof() {
-	$txtfile = file("./messages.txt");
-	$am_o_l = count($txtfile);
-	
-	foreach ($txtfile as $line_num => $line) {
-		if ($line_num == ($am_o_l - 2)) {
-			checkMsg($line, 0);
-		}
-	}
-}
-
-function replacehtml($string) {
-	//if (preg_match("/<.*?/>/", $string)) { //?/> -> ?\/>
-		$string= preg_replace("/</", "(", $string);
-		$string = preg_replace("/>/", ")", $string);
-	//}
-	return $string;
-}
-
-/*----------*/
-#           #
-/*----------*/
-
-if (!file_exists("./messages.txt")) {
-	newMesFile();
-}
-
-if ($_POST && !isset($_POST['htmlit']) && !isset($_POST['getnewest'])) {
-	checkban($_SERVER['REMOTE_ADDR']);
-	if (isset($_POST['newmsg'])  && isset($_POST['nick'])) {
-		newMsg($_POST['newmsg'], $_POST['nick']);
-	} elseif (isset($_POST['lastmsg'])  && isset($_POST['nick'])) {
-		checkMsg($_POST['lastmsg'], $_POST['nick']);
-	}
-} elseif (isset($_POST['htmlit']) && !isset($_POST['getnewest'])) {
-	print htmlit($_POST['htmlit'], strval($_POST['msgnum']));
-} elseif (isset($_POST['getnewest'])) {
-	print amountof();
-} else { 
-	/* If a user is connecting properly then they should always be
-	   sending something. If not then they are either connecting
-	   directly to the page, or something has gone wrong.         */
-	header("Location: /");
-	//print htmlit("1327716089//Ryan//stufudfjds &lt; akjdasd", 1);
-	//testing();
-}
-
-
-function testing() {
-	if (preg_match("/<.*?>/", "test < test")) {
-		print "It Matches";
-	}
+function check_ban($user_ip) { //wipwipwipwipwip
+	;
 }
 
 ?>
+
