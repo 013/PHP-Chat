@@ -1,10 +1,8 @@
-window.allowed_to_request = 1;
-
 $(document).ready( function() {
+	window.allowed_to_request = 1;
+	request_message();
 	setInterval("request_message()", 6000);
-});
 
-$(document).ready( function() {
 	$("#sendbutton").click(send_message);
 });
 
@@ -19,6 +17,10 @@ function request_message() {
 	if (window.allowed_to_request == 0) {
 		return 0;
 	}
+	// Check cookies for a nick name
+	if ($("#nick").val().length < 1) {
+		$("#nick").val($.cookie('nick'));
+	}
 	
 	window.allowed_to_request = 0;
 	$.ajax({
@@ -27,8 +29,6 @@ function request_message() {
 		data: {
 			get_message: "true",
 			old_message: $("#lastmsg").html()
-			//nick: $("#msgnum").html(),
-			//lastmsg: $("#lastmsg").html()
 		},
 		dataType: 'text'
 	}).done(function (text) {
@@ -52,33 +52,19 @@ function get_latest() {
 }
 
 function handle_message(text) {
-	//$("#lastmsg").html();
 	if (text != "0") {
-		// Make a new array to split the 
+		// Make a new array to split the lastmsg info from the messages
 		var msgnum = new Array();
 		msgnum = text.split('<');
 		$("#lastmsg").html(msgnum[0]);
 		
 		msgnum = msgnum[0].toString();
-		
 		text = text.substr(msgnum.length, text.length);
 		
-
 		$("#dataDisplay").append(text);
 		
-		// Scroll to the bottom automatically
+		// Scroll to the bottom automatically (WIP)
 		$("#dataDisplay").prop({ scrollTop: $("#dataDisplay").prop("scrollHeight") });
-		/*$.ajax({
-			url: 'ajax.php',
-			type: 'POST',
-			data: {
-				htmlit: text,
-				msgnum: $("#msgnum").html()
-			},
-			dataType: 'text'
-		}).done(function (text) {
-			$("#dataDisplay").append(text);
-		})*/
 	}
 }
 
@@ -87,6 +73,13 @@ function send_message() {
 		//If not valid
 		return 0;
 	}
+	var message = $("#message").val();
+	$("#message").val("");
+	$("#message").focus();
+	// Check if the nick name has been changed, if so update the cookie 
+	if (!$.cookie('nick') || $.cookie('nick') != $("#nick").val()) {
+		$.cookie('nick', $("#nick").val(), {expires: 7});
+	}
 	$.ajax({
 		url: 'ajax.php',
 		type: 'POST',
@@ -94,13 +87,12 @@ function send_message() {
 			new_message: "true",
 			nick: $("#nick").val(),
 			lastmsg: $("#lastmsg").html(),
-			newmsg: $("#message").val()
+			newmsg: message
 		},
 		dataType: 'text'
 	}).done(function (text) {
 		/* Once the message was sent
-		   empty the message input box and return all new messages */
-		$("#message").val("");
+		   return all new messages */
 		request_message();
 	})
 }
@@ -109,5 +101,7 @@ function validate() {
 	if($("#nick").val().length < 1 || $("#message").val().length < 1) {
 		return 0;
 	}
+	// Clear message box and set focus
+	
 	return 1;
 }
