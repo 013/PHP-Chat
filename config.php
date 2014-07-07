@@ -8,7 +8,7 @@
 // GRANT INSERT, UPDATE, DELETE ON phpchat.* TO 'phpchat'@'localhost';
 define('DB_DSN', 'mysql:host=localhost;dbname=phpchat');
 define('DB_USERNAME', 'phpchat');
-define('DB_PASSWORD', '4bd4838adaf7ae');
+define('DB_PASSWORD', 'lol');
 
 ?>
 
