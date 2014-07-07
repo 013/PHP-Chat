@@ -25,30 +25,43 @@ $chat = new chat($user);
 				text-align: center;
 			}
 			#container {
-				height: 80%;
+				height: 75%;
 				margin: 10px auto 0;
 				width: 90%;
 				padding-top: 10px;
 				border: 1px solid;
+				border-width: 1px 1px ;
 				border-color: #e5e6e9 #dfe0e4 #d0d1d5;
 				border-radius: 2px;
 			}
 			#messages {
-				height: 90%;
+				height: 100%;
 			}
 			#input {
-				height: 10%;
+				height: 55px;
 				border-top: 1px solid #dfe0e4;
-				margin-top: -1px;
+				margin-top: -55px;
+			}
+			.username {
+				line-height: 55px;
+				width: 20%;
+				float: left;
+				text-align: center;
+			}
+			.chgUsername {
+				height: 100%;
+				border: 0;
+				text-align: center;
 			}
 			.textinput {
+				background: none repeat scroll 0 center rgba(0, 0, 0, 0);
 				height: 100%;
-				width: 87%;
+				width: 67%;
 				float: left;
-				border: 1px solid #333;
+				border: 0px solid;
+				border-left: 1px solid #ccc;
 				border-radius: 2px;
 				padding: 0 0 0 8px;
-				border: 0px solid;
 			}
 			.sendbutton {
 				padding: 0;
@@ -65,9 +78,9 @@ $chat = new chat($user);
 			
 			</div>
 			<div id="input">
-			<span><?=$user->username;?></span>
+			<span class="username"><?=$user->username;?></span>
 			<input type="text" class="textinput">
-			<button class="sendbutton" >Send</button>
+			<button class="sendbutton">Send</button>
 			</div>
 		</div>
 
@@ -75,7 +88,24 @@ $chat = new chat($user);
 	<script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
 	<script type="text/javascript">
 $(document).ready(function() {
-	// Pressing 'enter'
+	var changingUN = false;
+	var unChanged = false; 
+	var username = '<?=$user->username;?>';
+
+	$('html').on('click', function() {
+		usernameOut();
+	});
+	// Pressing 'enter' when changing username
+	$('#container').on('keypress', '.chgUsername', function(e) {
+		if (e.keyCode == 13) {
+			changingUN = false;
+			var username = $('.chgUsername').val();
+			$('.username').html(username);
+			$('.textinput').focus();
+		}
+	});
+
+	// Pressing 'enter' when writing a message
 	$('#container').on('keypress', '.textinput', function(e) {
 		if (e.keyCode == 13) {
 			send();
@@ -86,8 +116,50 @@ $(document).ready(function() {
 		send();
 	});
 
+	// Click to change username
+	$('#input').on('click', '.username', function(event) {
+		event.stopPropagation();
+
+		if (!changingUN) {
+			changingUN = true;
+			var username = $('.username').html();
+			$('.username').html("<input class='chgUsername' value='"+username+"' >");
+			$('.chgUsername').select();
+		}
+	});
+
+	function usernameOut() {
+		changingUN = false;
+		var newUN = $('.chgUsername').val();
+
+		if (newUN != username) {
+			unChanged = true;
+			username = newUN;
+		}
+		
+		// If not taken
+		$('.username').html(newUN);
+		
+	}
+
 	function send() {
 		$.post( "chat.php", { action: 'newmsg', message: $(".textinput").val() }).done(function( data ) {
+			console.log(data);
+		});
+	}
+
+	var updateInt = setInterval(update, 2000);
+
+	function update() {
+		var data = {};
+
+		if (unChanged) {
+			data['username'] = username;
+			unChanged = false;
+		}
+		
+		//console.log(JSON.stringify(data));
+		$.post( "chat.php", { action: 'update', data: JSON.stringify(data) }).done(function( data ) {
 			console.log(data);
 		});
 	}

@@ -27,6 +27,26 @@ class chat {
 
 	}
 
+	function updateUser() {
+		$returnData = array();
+		if (strlen($_POST['data']) >= 3) {
+			// The user has updated their username / ...
+			$data = substr($_POST['data'], 1, -1);
+			$mstr = explode(",",$data);
+			$a = array();
+			foreach($mstr as $nstr ) {
+				    $narr = explode(":",$nstr);
+				    $narr[0] = str_replace("\x98","",$narr[0]);
+				    $narr[0] = str_replace('"',"",$narr[0]);
+				    $narr[1] = str_replace('"',"",$narr[1]);
+				    $a[$narr[0]] = $narr[1];
+			}
+			
+			if (isset($a["username"])) {
+				$username = $this->user->setUsername($a["username"]);
+			}
+		}
+	}
 }
 
 class user {
@@ -38,25 +58,25 @@ class user {
 		}
 		
 		session_start();
-		//unset( $_SESSION['uid'] );
 		//var_dump($_SESSION);
 		if (!isset($_SESSION['uid'])) {
 			// Create new user
 			$_SESSION['uid'] = 	"usr".uniqid();
 			$this->uid =		$_SESSION['uid'];
-			$this->username	= 	$uid;
-			$ip =			$_SERVER['REMOTE_ADDR'];
+			$this->username	= 	substr($this->uid, 0, 7);
+			$this->ip =		$_SERVER['REMOTE_ADDR'];
 
 			$sql =	"INSERT INTO users VALUES (:uid, :username, INET_ATON(:ip), NULL);";
 			$st =	$this->db->prepare($sql);
-			$st->bindParam('uid', $uid);
-			$st->bindParam('username', $username);
-			$st->bindParam('ip', $ip);
+			$st->bindParam('uid', $this->uid);
+			$st->bindParam('username', $this->username);
+			$st->bindParam('ip', $this->ip);
 
 			$st->execute();
 		} else {
 			// Get username from uid
 			$this->uid =	$_SESSION['uid'];
+			$this->ip =	$_SERVER['REMOTE_ADDR'];
 			$sql =		"SELECT username FROM users WHERE uid=:uid;";
 			$st =		$this->db->prepare($sql);
 			$st->bindParam(':uid', $this->uid);
@@ -64,6 +84,7 @@ class user {
 
 			$row = $st->fetch();
 			if ( !$row ) {
+				unset( $_SESSION['uid'] );
 				die('Username error');
 			}
 			
@@ -75,23 +96,41 @@ class user {
 		$sql = "UPDATE users SET lastalive=NULL WHERE uid=:uid";
 	}
 
+	function setUsername($username) {
+		$sql = "SELECT * FROM users WHERE username=:username AND lastalive > DATE_SUB(NOW(), INTERVAL 10 SECOND);";
+		$st = $this->db->prepare($sql);
+		$st->bindParam(':username',$username);
+		$st->execute();
+
+		$row = $st->fetch();
+
+		if ( !$row ) {
+			// Username is free to have
+			$sql = "UPDATE users SET lastalive=NULL, username=:username WHERE uid=:uid";
+			$st = $this->db->prepare($sql);
+			$st->bindParam(':username', $username);
+			$st->bindParam(':uid', $this->uid);
+			$st->execute();
+			$this->username = $username;
+		}
+		return $this->username;
+	}
+
 }
 
 if (isset($_POST['action'])) {
-	if (!isset($_POST['message'])) {
-		$data = array('message'=>"abcdef");
-	} else {
-		$data = $_POST;
-	}
-
-	$action = "newmsg";//$_POST['action'];
+	$action = $_POST['action'];
 	$user = new user();
+	$chat = new chat($user);
+
 	$user->updateLastAlive();
 
 	switch ($action) {
 		case 'newmsg':
-			$chat = new chat($user);
 			$chat->newMessage($data);
+			break;
+		case 'update':
+			$chat->updateUser();
 			break;
 		default:
 			break;
