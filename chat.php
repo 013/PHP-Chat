@@ -29,9 +29,9 @@ class chat {
 
 	function updateUser() {
 		$returnData = array();
+		$data = substr($_POST['data'], 1, -1);
 		if (strlen($_POST['data']) >= 3) {
 			// The user has updated their username / ...
-			$data = substr($_POST['data'], 1, -1);
 			$mstr = explode(",",$data);
 			$a = array();
 			foreach($mstr as $nstr ) {
@@ -44,8 +44,21 @@ class chat {
 			
 			if (isset($a["username"])) {
 				$username = $this->user->setUsername($a["username"]);
+				$returnData["username"] = $username;
 			}
 		}
+		
+		$this->getLatestMsg($lastID);
+	}
+
+	function getLatestMsg($lastID) {
+		$sql = "SELECT * FROM messages WHERE id > :lastid LIMIT 10;";
+		$st = $this->db->prepare($sql);
+		$st->bindValue(':lastid', $lastID);
+
+		$st-execute();
+
+		$messages = $st->fetchAll();
 	}
 }
 
@@ -94,6 +107,9 @@ class user {
 
 	function updateLastAlive() {
 		$sql = "UPDATE users SET lastalive=NULL WHERE uid=:uid";
+		$st = $this->db->prepare($sql);
+		$st->bindParam(':uid', $this->uid);
+		$st->execute();
 	}
 
 	function setUsername($username) {
