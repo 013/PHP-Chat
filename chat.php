@@ -10,7 +10,7 @@ class chat {
 		try {
 			$this->db = new PDO(DB_DSN, DB_USERNAME, DB_PASSWORD);
 		} catch (PDOException $exception) {
-			die();
+			die("Database connection error.");
 		}
 	}
 
@@ -67,7 +67,7 @@ class user {
 		try {
 			$this->db = new PDO(DB_DSN, DB_USERNAME, DB_PASSWORD);
 		} catch (PDOException $exception) {
-			die();
+			die("Database connection error.");
 		}
 		
 		session_start();
