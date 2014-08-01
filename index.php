@@ -11,6 +11,7 @@ $chat = new chat($user);
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <html>
 	<head>
+		<title>PHP Chat</title>
 		<style>
 			body {
 				background: #fff;
@@ -162,7 +163,8 @@ $(document).ready(function() {
 		
 		//console.log(JSON.stringify(data));
 		$.post( "chat.php", { action: 'update', data: JSON.stringify(data) }).done(function( data ) {
-			console.log(data);
+			//console.log(data);
+			console.dir(JSON.parse(data));
 		});
 	}
 });

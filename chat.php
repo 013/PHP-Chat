@@ -17,17 +17,17 @@ class chat {
 	function newMessage($data) {
 		$message = $data['message'];
 		$username = $this->user->username;
-		//echo $message . " " . $username;
+		echo $message . " " . $username;
 		$sql = "INSERT INTO messages VALUES(NULL, :username, :message, NULL);";
 		$st = $this->db->prepare($sql);
 		$st->bindParam(':username', $username);
 		$st->bindParam(':message', $message);
-
+		
 		$st->execute();
 
 	}
 
-	function updateUser() {
+	function updateUser($lastID=0) {
 		$returnData = array();
 		$data = substr($_POST['data'], 1, -1);
 		if (strlen($_POST['data']) >= 3) {
@@ -47,18 +47,29 @@ class chat {
 				$returnData["username"] = $username;
 			}
 		}
-		
-		$this->getLatestMsg($lastID);
+
+		$returnData["messages"] = $this->getLatestMsg($lastID);
+
+		$jsonReturn = json_encode( $returnData );
+
+		print $jsonReturn;
 	}
 
 	function getLatestMsg($lastID) {
+		//[TODO] Don't select messages older than 2 hours
+		$messages = array();
 		$sql = "SELECT * FROM messages WHERE id > :lastid LIMIT 10;";
+
 		$st = $this->db->prepare($sql);
 		$st->bindValue(':lastid', $lastID);
 
-		$st-execute();
+		$st->execute();
 
-		$messages = $st->fetchAll();
+		while($row = $st->fetch()) {
+			array_push($messages, json_encode($row));
+		}
+
+		return $messages;
 	}
 }
 
@@ -143,6 +154,7 @@ if (isset($_POST['action'])) {
 
 	switch ($action) {
 		case 'newmsg':
+			$data = $_POST;
 			$chat->newMessage($data);
 			break;
 		case 'update':
