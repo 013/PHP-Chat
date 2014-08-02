@@ -30,6 +30,8 @@ class chat {
 	function updateUser($lastID=0) {
 		$returnData = array();
 		$data = substr($_POST['data'], 1, -1);
+		$lastID = isset($data['lastid']) ? $data['lastid'] : 0;
+
 		if (strlen($_POST['data']) >= 3) {
 			// The user has updated their username / ...
 			$mstr = explode(",",$data);
@@ -58,7 +60,7 @@ class chat {
 	function getLatestMsg($lastID) {
 		//[TODO] Don't select messages older than 2 hours
 		$messages = array();
-		$sql = "SELECT * FROM messages WHERE id > :lastid LIMIT 10;";
+		$sql = "SELECT * FROM messages WHERE id > :lastid ORDER BY id DESC LIMIT 10;";
 
 		$st = $this->db->prepare($sql);
 		$st->bindValue(':lastid', $lastID);

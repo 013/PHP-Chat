@@ -94,6 +94,7 @@ $(document).ready(function() {
 	var changingUN = false;
 	var unChanged = false; 
 	var username = '<?=$user->username;?>';
+	var lastID = 0;
 
 	$('html').on('click', function() {
 		usernameOut();
@@ -151,7 +152,7 @@ $(document).ready(function() {
 		});
 	}
 
-	var updateInt = setInterval(update, 2000);
+	var updateInt = setInterval(update, 5000);
 
 	function update() {
 		var data = {};
@@ -162,7 +163,7 @@ $(document).ready(function() {
 		}
 		
 		//console.log(JSON.stringify(data));
-		$.post( "chat.php", { action: 'update', data: JSON.stringify(data) }).done(function( data ) {
+		$.post( "chat.php", { action: 'update', data: JSON.stringify(data), lastid: lastID }).done(function( data ) {
 			//console.log(data);
 			console.dir(JSON.parse(data));
 		});
